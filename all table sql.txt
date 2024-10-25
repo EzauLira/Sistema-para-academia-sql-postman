@@ -1,0 +1,161 @@
+-- Table: public.administrador
+
+-- DROP TABLE IF EXISTS public.administrador;
+
+CREATE TABLE IF NOT EXISTS public.administrador
+(
+    id SERIAL PRIMARY KEY,
+    cpf character varying(20) COLLATE pg_catalog."default" NOT NULL,
+    senha character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    CONSTRAINT administrador_pkey PRIMARY KEY (id),
+    CONSTRAINT administrador_cpf_key UNIQUE (cpf)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.administrador
+    OWNER to postgres;
+
+
+-- Table: public.agendamento
+
+-- DROP TABLE IF EXISTS public.agendamento;
+
+CREATE TABLE IF NOT EXISTS public.agendamento
+(
+    id SERIAL PRIMARY KEY,
+    cliente_id integer NOT NULL,
+    treino_id integer NOT NULL,
+    data character varying(10) COLLATE pg_catalog."default" NOT NULL,
+    hora character varying(5) COLLATE pg_catalog."default" NOT NULL,
+    CONSTRAINT agendamento_pkey PRIMARY KEY (id),
+    CONSTRAINT agendamento_cliente_id_fkey FOREIGN KEY (cliente_id)
+        REFERENCES public.cliente (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION,
+    CONSTRAINT agendamento_treino_id_fkey FOREIGN KEY (treino_id)
+        REFERENCES public.treino (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.agendamento
+    OWNER to postgres;
+
+
+
+-- Table: public.cliente
+
+-- DROP TABLE IF EXISTS public.cliente;
+
+CREATE TABLE IF NOT EXISTS public.cliente
+(
+    id SERIAL PRIMARY KEY,
+    nome character varying(100) COLLATE pg_catalog."default" NOT NULL,
+    idade integer NOT NULL,
+    cpf character varying(15) COLLATE pg_catalog."default" NOT NULL,
+    genero integer NOT NULL,
+    telefone character varying(15) COLLATE pg_catalog."default",
+    email character varying(100) COLLATE pg_catalog."default",
+    senha character varying(255) COLLATE pg_catalog."default",
+    plano_id integer NOT NULL,
+    CONSTRAINT cliente_pkey PRIMARY KEY (id),
+    CONSTRAINT cliente_genero_fkey FOREIGN KEY (genero)
+        REFERENCES public.genero (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION,
+    CONSTRAINT cliente_plano_id_fkey FOREIGN KEY (plano_id)
+        REFERENCES public.plano (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.cliente
+    OWNER to postgres;
+
+
+-- Table: public.genero
+
+-- DROP TABLE IF EXISTS public.genero;
+
+CREATE TABLE IF NOT EXISTS public.genero
+(
+    id SERIAL PRIMARY KEY,
+    nome character varying(20) COLLATE pg_catalog."default" NOT NULL,
+    CONSTRAINT genero_pkey PRIMARY KEY (id)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.genero
+    OWNER to postgres;
+
+
+-- Table: public.instrutor
+
+-- DROP TABLE IF EXISTS public.instrutor;
+
+CREATE TABLE IF NOT EXISTS public.instrutor
+(
+    id SERIAL PRIMARY KEY,
+    nome character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    cpf character varying(15) COLLATE pg_catalog."default" NOT NULL,
+    genero integer NOT NULL,
+    telefone character varying(15) COLLATE pg_catalog."default" NOT NULL,
+    email character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    senha character varying(255) COLLATE pg_catalog."default" NOT NULL,
+    CONSTRAINT instrutor_pkey PRIMARY KEY (id),
+    CONSTRAINT instrutor_cpf_key UNIQUE (cpf),
+    CONSTRAINT instrutor_senha_key UNIQUE (senha),
+    CONSTRAINT instrutor_genero_fkey FOREIGN KEY (genero)
+        REFERENCES public.genero (id) MATCH SIMPLE
+        ON UPDATE NO ACTION
+        ON DELETE NO ACTION
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.instrutor
+    OWNER to postgres;
+
+
+-- Table: public.plano
+
+-- DROP TABLE IF EXISTS public.plano;
+
+CREATE TABLE IF NOT EXISTS public.plano
+(
+    id SERIAL PRIAMEY KEY,
+    nome character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    descricao text COLLATE pg_catalog."default" NOT NULL,
+    duracao integer NOT NULL,
+    preco numeric(10,2) NOT NULL,
+    CONSTRAINT plano_pkey PRIMARY KEY (id)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.plano
+    OWNER to postgres;
+
+
+-- Table: public.treino
+
+-- DROP TABLE IF EXISTS public.treino;
+
+CREATE TABLE IF NOT EXISTS public.treino
+(
+    id SERIAL PRIMARY KEY,
+    nome character varying(50) COLLATE pg_catalog."default" NOT NULL,
+    descricao text COLLATE pg_catalog."default" NOT NULL,
+    CONSTRAINT treino_pkey PRIMARY KEY (id)
+)
+
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.treino
+    OWNER to postgres;

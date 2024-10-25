@@ -1,0 +1,552 @@
+-- FUNCTION: public.obter_usuario_por_cpf(character varying)
+
+-- DROP FUNCTION IF EXISTS public.obter_usuario_por_cpf(character varying);
+
+CREATE OR REPLACE FUNCTION public.obter_usuario_por_cpf(
+	p_cpf_usuario character varying)
+    RETURNS TABLE(id_usuario integer, nome character varying, cpf character varying, senha character varying, tipo_usuario character varying) 
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+    ROWS 1000
+
+AS $BODY$
+BEGIN
+   RETURN QUERY
+   SELECT * FROM (
+       -- Busca na tabela INSTRUTOR
+       SELECT
+           I.ID AS ID_USUARIO,
+           I.NOME,
+           I.CPF,
+           I.SENHA,
+           CAST('INSTRUTOR' AS VARCHAR) AS TIPO_USUARIO
+       FROM INSTRUTOR I
+       WHERE I.CPF = REPLACE(REPLACE(REPLACE(p_cpf_usuario, '.', ''), '-', ''), ' ', '')
+       UNION ALL
+       -- Busca na tabela CLIENTE
+       SELECT
+           C.ID AS ID_USUARIO,
+           C.NOME,
+           C.CPF,
+           C.SENHA,
+           CAST('CLIENTE' AS VARCHAR) AS TIPO_USUARIO
+       FROM CLIENTE C
+       WHERE C.CPF = REPLACE(REPLACE(REPLACE(p_cpf_usuario, '.', ''), '-', ''), ' ', '')
+       UNION ALL
+       -- Busca na tabela ADMINISTRADOR
+       SELECT
+           A.ID AS ID_USUARIO,
+           'Administrador' AS NOME,
+           A.CPF,
+           A.SENHA,
+           CAST('ADMINISTRADOR' AS VARCHAR) AS TIPO_USUARIO
+       FROM ADMINISTRADOR A
+       WHERE A.CPF = REPLACE(REPLACE(REPLACE(p_cpf_usuario, '.', ''), '-', ''), ' ', '')
+   ) AS combined_results
+   LIMIT 1;
+END;
+$BODY$;
+
+ALTER FUNCTION public.obter_usuario_por_cpf(character varying)
+    OWNER TO postgres;
+
+
+-- FUNCTION: public.listar_treinos_de_um_cliente_especifico(character varying)
+
+-- DROP FUNCTION IF EXISTS public.listar_treinos_de_um_cliente_especifico(character varying);
+
+CREATE OR REPLACE FUNCTION public.listar_treinos_de_um_cliente_especifico(
+	p_cliente_nome character varying)
+    RETURNS TABLE(treino_nome character varying, data character varying, hora character varying) 
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+    ROWS 1000
+
+AS $BODY$
+BEGIN
+    -- Verifica se o nome do cliente é válido (case insensitive)
+    IF NOT EXISTS (SELECT 1 FROM cliente WHERE LOWER(nome) = LOWER(p_cliente_nome)) THEN
+        RAISE EXCEPTION 'Cliente não encontrado.';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        t.nome AS treino_nome,
+        a.data,
+        a.hora
+    FROM 
+        agendamento a
+    JOIN 
+        cliente c ON a.cliente_id = c.id
+    JOIN 
+        treino t ON a.treino_id = t.id
+    WHERE 
+        LOWER(c.nome) = LOWER(p_cliente_nome)
+        AND TO_DATE(a.data, 'DD/MM/YYYY') >= CURRENT_DATE;
+
+    -- Verifica se a consulta retornou resultados
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Nenhum treino ativo encontrado para o cliente.';
+    END IF;
+END;
+$BODY$;
+
+ALTER FUNCTION public.listar_treinos_de_um_cliente_especifico(character varying)
+    OWNER TO postgres;
+
+
+-- FUNCTION: public.listar_todos_treinos_por_cliente(character varying)
+
+-- DROP FUNCTION IF EXISTS public.listar_todos_treinos_por_cliente(character varying);
+
+CREATE OR REPLACE FUNCTION public.listar_todos_treinos_por_cliente(
+	p_cliente_nome character varying)
+    RETURNS TABLE(treino_nome character varying, data character varying, hora character varying) 
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+    ROWS 1000
+
+AS $BODY$
+BEGIN
+    -- Verifica se o nome do cliente é válido (case insensitive)
+    IF NOT EXISTS (SELECT 1 FROM cliente WHERE LOWER(nome) = LOWER(p_cliente_nome)) THEN
+        RAISE EXCEPTION 'Cliente não encontrado.';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        t.nome AS treino_nome,
+        a.data,
+        a.hora
+    FROM 
+        agendamento a
+    JOIN 
+        cliente c ON a.cliente_id = c.id
+    JOIN 
+        treino t ON a.treino_id = t.id
+    WHERE 
+        LOWER(c.nome) = LOWER(p_cliente_nome);
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Nenhum treino encontrado para o cliente';
+    END IF;
+END;
+$BODY$;
+
+ALTER FUNCTION public.listar_todos_treinos_por_cliente(character varying)
+    OWNER TO postgres;
+
+
+-- FUNCTION: public.listar_agendamentos_hoje()
+
+-- DROP FUNCTION IF EXISTS public.listar_agendamentos_hoje();
+
+CREATE OR REPLACE FUNCTION public.listar_agendamentos_hoje(
+	)
+    RETURNS TABLE(id integer, cliente_nome character varying, treino_nome character varying) 
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+    ROWS 1000
+
+AS $BODY$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM agendamento a
+        WHERE a.data = TO_CHAR(CURRENT_DATE, 'DD/MM/YYYY')
+    ) THEN
+        RETURN QUERY
+        SELECT 
+            a.id,
+            c.nome AS cliente_nome,
+            t.nome AS treino_nome
+        FROM 
+            agendamento a
+        JOIN 
+            cliente c ON a.cliente_id = c.id
+        JOIN 
+            treino t ON a.treino_id = t.id
+        WHERE 
+            a.data = TO_CHAR(CURRENT_DATE, 'DD/MM/YYYY');
+    ELSE
+        RAISE EXCEPTION 'Nenhum agendamento encontrado para a data atual.';
+    END IF;
+END;
+$BODY$;
+
+ALTER FUNCTION public.listar_agendamentos_hoje()
+    OWNER TO postgres;
+
+
+-- FUNCTION: public.gerar_relatorio_academia()
+
+-- DROP FUNCTION IF EXISTS public.gerar_relatorio_academia();
+
+CREATE OR REPLACE FUNCTION public.gerar_relatorio_academia(
+	)
+    RETURNS TABLE(total_clientes integer, plano_mensal_vendido integer, plano_anual_vendido integer, plano_trimestral_vendido integer) 
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+    ROWS 1000
+
+AS $BODY$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        -- Quantidade total de clientes cadastrados
+        (SELECT COUNT(*)::integer FROM cliente) AS total_clientes,
+
+        -- Quantidade de planos mensais vendidos
+        (SELECT COUNT(*)::integer 
+         FROM cliente c 
+         JOIN plano p ON c.plano_id = p.id 
+         WHERE p.duracao = 1) AS plano_mensal_vendido,
+
+        -- Quantidade de planos anuais vendidos
+        (SELECT COUNT(*)::integer 
+         FROM cliente c 
+         JOIN plano p ON c.plano_id = p.id 
+         WHERE p.duracao = 12) AS plano_anual_vendido,
+
+        -- Quantidade de planos trimestrais vendidos
+        (SELECT COUNT(*)::integer 
+         FROM cliente c 
+         JOIN plano p ON c.plano_id = p.id 
+         WHERE p.duracao = 3) AS plano_trimestral_vendido;
+END;
+$BODY$;
+
+ALTER FUNCTION public.gerar_relatorio_academia()
+    OWNER TO postgres;
+
+
+-- FUNCTION: public.deletar_treino_ativo(integer)
+
+-- DROP FUNCTION IF EXISTS public.deletar_treino_ativo(integer);
+
+CREATE OR REPLACE FUNCTION public.deletar_treino_ativo(
+	agendamento_id integer)
+    RETURNS void
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+AS $BODY$
+BEGIN
+    DELETE FROM public.agendamento
+    WHERE public.agendamento.id = agendamento_id
+    AND (public.agendamento.data::date > CURRENT_DATE OR (public.agendamento.data::date = CURRENT_DATE AND public.agendamento.hora::time > CURRENT_TIME));
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Nenhum treino ativo encontrado para o agendamento fornecido.';
+    END IF;
+END;
+$BODY$;
+
+ALTER FUNCTION public.deletar_treino_ativo(integer)
+    OWNER TO postgres;
+
+
+-- FUNCTION: public.cadastrar_instrutor(character varying, character varying, integer, character varying, character varying, character varying)
+
+-- DROP FUNCTION IF EXISTS public.cadastrar_instrutor(character varying, character varying, integer, character varying, character varying, character varying);
+
+CREATE OR REPLACE FUNCTION public.cadastrar_instrutor(
+	p_nome character varying,
+	p_cpf character varying,
+	p_genero integer,
+	p_telefone character varying,
+	p_email character varying,
+	p_senha character varying)
+    RETURNS text
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+AS $BODY$
+BEGIN
+ -- Remover pontos e traços do CPF
+    p_cpf := regexp_replace(p_cpf, '[^0-9]', '', 'g');
+	
+    -- Verifica se já existe um instrutor com o mesmo nome
+    IF EXISTS (SELECT 1 FROM instrutor WHERE nome = p_nome) THEN
+        RAISE EXCEPTION 'Erro: Nome já cadastrado.';
+    END IF;
+
+    -- Verifica se já existe um instrutor com o mesmo CPF
+    IF EXISTS (SELECT 1 FROM instrutor WHERE cpf = p_cpf) THEN
+        RAISE EXCEPTION 'Erro: CPF já cadastrado.';
+    END IF;
+
+    -- Verifica se já existe um instrutor com o mesmo telefone
+    IF EXISTS (SELECT 1 FROM instrutor WHERE telefone = p_telefone) THEN
+        RAISE EXCEPTION 'Erro: Telefone já cadastrado.';
+    END IF;
+
+    -- Verifica se já existe um instrutor com o mesmo email
+    IF EXISTS (SELECT 1 FROM instrutor WHERE email = p_email) THEN
+        RAISE EXCEPTION 'Erro: Email já cadastrado.';
+    END IF;
+
+    -- Verifica se a senha contém pelo menos uma letra maiúscula, um caractere especial, um número e tem pelo menos 5 caracteres
+    IF p_senha !~ '[A-Z]' THEN
+        RAISE EXCEPTION 'A senha deve conter pelo menos uma letra maiúscula';
+    END IF;
+
+    IF p_senha !~ '[@.]' THEN
+        RAISE EXCEPTION 'A senha deve conter pelo menos um caractere especial (@ ou .)';
+    END IF;
+
+    IF p_senha !~ '[0-9]' THEN
+        RAISE EXCEPTION 'A senha deve conter pelo menos um número';
+    END IF;
+
+    IF LENGTH(p_senha) < 5 THEN
+        RAISE EXCEPTION 'A senha deve ter pelo menos 5 caracteres';
+    END IF;
+
+    -- Insere o novo instrutor se todas as verificações passarem
+    INSERT INTO instrutor (nome, cpf, genero, telefone, email, senha)
+    VALUES (p_nome, p_cpf, p_genero, p_telefone, p_email, p_senha);
+
+    -- Retorna mensagem de sucesso
+    RETURN 'Instrutor cadastrado com sucesso.';
+END;
+$BODY$;
+
+ALTER FUNCTION public.cadastrar_instrutor(character varying, character varying, integer, character varying, character varying, character varying)
+    OWNER TO postgres;
+
+
+-- FUNCTION: public.cadastrar_cliente(character varying, integer, character varying, integer, character varying, character varying, character varying, integer)
+
+-- DROP FUNCTION IF EXISTS public.cadastrar_cliente(character varying, integer, character varying, integer, character varying, character varying, character varying, integer);
+
+CREATE OR REPLACE FUNCTION public.cadastrar_cliente(
+	p_nome character varying,
+	p_idade integer,
+	p_cpf character varying,
+	p_genero integer,
+	p_telefone character varying,
+	p_email character varying,
+	p_senha character varying,
+	p_plano_id integer)
+    RETURNS text
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+AS $BODY$
+BEGIN
+    -- Remover pontos e traços do CPF
+    p_cpf := regexp_replace(p_cpf, '[^0-9]', '', 'g');
+
+    -- Verifica se já existe um cliente com o mesmo nome
+    IF EXISTS (SELECT 1 FROM cliente WHERE nome = p_nome) THEN
+        RAISE EXCEPTION 'Erro: Nome já cadastrado.';
+    END IF;
+
+    -- Verifica se já existe um cliente com o mesmo CPF
+    IF EXISTS (SELECT 1 FROM cliente WHERE cpf = p_cpf) THEN
+        RAISE EXCEPTION 'Erro: CPF já cadastrado.';
+    END IF;
+
+    -- Verifica se já existe um cliente com o mesmo telefone
+    IF EXISTS (SELECT 1 FROM cliente WHERE telefone = p_telefone) THEN
+        RAISE EXCEPTION 'Erro: Telefone já cadastrado.';
+    END IF;
+
+    -- Verifica se já existe um cliente com o mesmo email
+    IF EXISTS (SELECT 1 FROM cliente WHERE email = p_email) THEN
+        RAISE EXCEPTION 'Erro: Email já cadastrado.';
+    END IF;
+
+    -- Verifica se a senha contém pelo menos uma letra maiúscula, um caractere especial, um número e tem pelo menos 5 caracteres
+    IF p_senha !~ '[A-Z]' THEN
+        RAISE EXCEPTION 'A senha deve conter pelo menos uma letra maiúscula';
+    END IF;
+
+    IF p_senha !~ '[@.]' THEN
+        RAISE EXCEPTION 'A senha deve conter pelo menos um caractere especial (@ ou .)';
+    END IF;
+
+    IF p_senha !~ '[0-9]' THEN
+        RAISE EXCEPTION 'A senha deve conter pelo menos um número';
+    END IF;
+
+    IF LENGTH(p_senha) < 5 THEN
+        RAISE EXCEPTION 'A senha deve ter pelo menos 5 caracteres';
+    END IF;
+
+    -- Insere o novo cliente se todas as verificações passarem
+    INSERT INTO cliente (nome, idade, cpf, genero, telefone, email, senha, plano_id)
+    VALUES (p_nome, p_idade, p_cpf, p_genero, p_telefone, p_email, p_senha, p_plano_id);
+
+    -- Retorna mensagem de sucesso
+    RETURN 'Cliente cadastrado com sucesso.';
+END;
+$BODY$;
+
+ALTER FUNCTION public.cadastrar_cliente(character varying, integer, character varying, integer, character varying, character varying, character varying, integer)
+    OWNER TO postgres;
+
+
+-- FUNCTION: public.buscar_dados_pessoais_pelo_primeiro_nome(character varying)
+
+-- DROP FUNCTION IF EXISTS public.buscar_dados_pessoais_pelo_primeiro_nome(character varying);
+
+CREATE OR REPLACE FUNCTION public.buscar_dados_pessoais_pelo_primeiro_nome(
+	primeiro_nome character varying)
+    RETURNS TABLE(nome character varying, cpf character varying, telefone character varying, email character varying, senha character varying, plano_nome character varying) 
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+    ROWS 1000
+
+AS $BODY$
+BEGIN
+    -- Verifica se a entrada não está vazia
+    IF primeiro_nome IS NULL OR primeiro_nome = '' THEN
+        RAISE EXCEPTION 'O nome não pode ser vazio. Por favor, forneça um nome válido.';
+    END IF;
+
+    -- Verifica se existe algum cliente com o nome fornecido
+    IF NOT EXISTS (
+        SELECT 1 
+        FROM public.cliente c 
+        WHERE c.nome ILIKE primeiro_nome || '%'
+    ) THEN
+        RAISE EXCEPTION 'Nome não encontrado. Verifique se o nome está correto ou talvez essa pessoa não esteja cadastrada.';
+    END IF;
+
+    -- Retorna os detalhes dos clientes que correspondem ao primeiro nome fornecido
+    RETURN QUERY
+    SELECT 
+        c.nome,
+        c.cpf,
+        c.telefone,
+        c.email,
+        c.senha,
+        p.nome AS plano_nome
+    FROM 
+        public.cliente c
+    JOIN 
+        public.plano p ON c.plano_id = p.id
+    WHERE 
+        c.nome ILIKE primeiro_nome || '%';
+END;
+$BODY$;
+
+ALTER FUNCTION public.buscar_dados_pessoais_pelo_primeiro_nome(character varying)
+    OWNER TO postgres;
+
+
+-- FUNCTION: public.atualizar_agendamento(integer, integer, character varying, character varying)
+
+-- DROP FUNCTION IF EXISTS public.atualizar_agendamento(integer, integer, character varying, character varying);
+
+CREATE OR REPLACE FUNCTION public.atualizar_agendamento(
+	agendamento_id integer,
+	novo_treino_id integer,
+	nova_data character varying,
+	nova_hora character varying)
+    RETURNS void
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+AS $BODY$
+BEGIN
+
+  -- Verificar se o treino_id é válido
+   IF novo_treino_id NOT IN (1, 2, 3) THEN
+       RAISE EXCEPTION 'Treino inválido. Deve ser 1, 2 ou 3.';
+   END IF;
+   
+   -- Atualiza o treino, data e hora do agendamento
+   UPDATE public.agendamento
+   SET treino_id = novo_treino_id,
+       data = LEFT(nova_data, 10),  -- Trunca a data para 10 caracteres
+       hora = LEFT(nova_hora, 5)    -- Trunca a hora para 5 caracteres
+   WHERE id = agendamento_id;
+
+   -- Verifica se a atualização foi bem-sucedida
+   IF NOT FOUND THEN
+       RAISE EXCEPTION 'Agendamento não encontrado ou não pertence ao cliente.';
+   END IF;
+  
+END;
+$BODY$;
+
+ALTER FUNCTION public.atualizar_agendamento(integer, integer, character varying, character varying)
+    OWNER TO postgres;
+
+
+-- FUNCTION: public.agendar_treino(integer, integer, character varying, character varying)
+
+-- DROP FUNCTION IF EXISTS public.agendar_treino(integer, integer, character varying, character varying);
+
+CREATE OR REPLACE FUNCTION public.agendar_treino(
+	p_cliente_id integer,
+	p_treino_id integer,
+	p_data character varying,
+	p_hora character varying)
+    RETURNS void
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+AS $BODY$
+BEGIN
+   -- Verificar se o treino_id é válido
+   IF p_treino_id NOT IN (1, 2, 3) THEN
+       RAISE EXCEPTION 'Treino inválido. Deve ser 1, 2 ou 3.';
+   END IF;
+
+   -- Verificar se o cliente já existe na tabela cliente
+   IF NOT EXISTS (
+       SELECT 1
+       FROM cliente
+       WHERE id = p_cliente_id
+   ) THEN
+       RAISE EXCEPTION 'Cliente não encontrado.';
+   END IF;
+
+   -- Verificar se a data e hora do agendamento são futuras
+   IF TO_TIMESTAMP(p_data || ' ' || p_hora, 'DD/MM/YYYY HH24:MI') <= NOW() THEN
+       RAISE EXCEPTION 'A data e hora do agendamento devem ser futuras.';
+   END IF;
+
+   -- Verificar se já existe um treino agendado para o mesmo cliente na mesma data e hora
+   IF EXISTS (
+       SELECT 1
+       FROM agendamento
+       WHERE cliente_id = p_cliente_id
+       AND treino_id = p_treino_id
+       AND data = p_data
+   ) THEN
+       RAISE EXCEPTION 'O mesmo treino já está agendado para este cliente nesta data.';
+   END IF;
+
+   -- Verificar se já existe um treino agendado para o mesmo cliente na mesma hora
+   IF EXISTS (
+       SELECT 1
+       FROM agendamento
+       WHERE cliente_id = p_cliente_id
+       AND data = p_data
+       AND ABS(EXTRACT(EPOCH FROM (hora::time - p_hora::time)) / 60) < 30
+   ) THEN
+       RAISE EXCEPTION 'Já existe um treino agendado para este cliente nesta data e hora. Deve haver pelo menos 30 minutos de diferença entre os treinos.';
+   END IF;
+
+   -- Inserir o novo agendamento
+   INSERT INTO agendamento (cliente_id, treino_id, data, hora)
+   VALUES (p_cliente_id, p_treino_id, p_data, p_hora);
+END;
+$BODY$;
+
+ALTER FUNCTION public.agendar_treino(integer, integer, character varying, character varying)
+    OWNER TO postgres;
+
+
+

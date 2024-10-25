@@ -1,0 +1,195 @@
+{
+	"info": {
+		"_postman_id": "01c49d9b-3cd8-4f6a-9fed-5d77a0d4a043",
+		"name": "Academia",
+		"schema": "https://schema.getpostman.com/json/collection/v2.0.0/collection.json",
+		"_exporter_id": "36971595"
+	},
+	"item": [
+		{
+			"name": "Cliente",
+			"item": [
+				{
+					"name": "Cadastro cliente",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"nome\": \"Regina Sandra Joana Fogaça\",\r\n    \"idade\": 29,\r\n    \"cpf\": \"115.002.548-43\",\r\n    \"genero\": 2,\r\n    \"telefone\": \"(11)93876-7102\",\r\n    \"email\": \"regina_fogaca@afujita.com.br\",\r\n    \"senha\": \"Alicia@123\",\r\n    \"idPlano\": 1\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://localhost:8080/v1/cliente/cadastrar"
+					},
+					"response": []
+				},
+				{
+					"name": "Agendar treino",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"idCliente\": \"3\",\r\n    \"idTreino\": \"2\",\r\n    \"data\": \"07/10/2024\",\r\n    \"hora\": \"13:00\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://localhost:8080/v1/cliente/agendar"
+					},
+					"response": []
+				},
+				{
+					"name": "Atualizar agendamento",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"idAgendamento\": 3,\r\n    \"novotreino\": 2,\r\n    \"data\": \"07/10/2024\",\r\n    \"hora\": \"13:10\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Excluir agendamento",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"idAgendamento\": 3\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://localhost:8080/v1/cliente/excluir-agendamento"
+					},
+					"response": []
+				},
+				{
+					"name": "Buscar dados",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "ADM",
+			"item": [
+				{
+					"name": "Cadastrar instrutor",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"nome\": \"Regina Sandra Joana Fogaça\",\r\n    \"idade\": 29,\r\n    \"cpf\": \"115.002.548-43\",\r\n    \"genero\": 2,\r\n    \"telefone\": \"(11)93876-7102\",\r\n    \"email\": \"regina_fogaca@afujita.com.br\",\r\n    \"senha\": \"Alicia@123\",\r\n    \"idPlano\": 1\r\n}\r\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://localhost:8080/v1/cliente/cadastrar"
+					},
+					"response": []
+				},
+				{
+					"name": "Buscar Estatisticas",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Instrutor",
+			"item": [
+				{
+					"name": "agendamento do dia",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": "http://localhost:8080/v1/instrutor/agendamento-dia"
+					},
+					"response": []
+				},
+				{
+					"name": "Agendamento especifico",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"nome\": \"Ezau miguel lira\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://localhost:8080/v1/instrutor/agendamento-especifico"
+					},
+					"response": []
+				},
+				{
+					"name": "Buscar Historico do cliente",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"nome\": \"Ezau miguel lira\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": "http://localhost:8080/v1/instrutor/historico"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Login geral",
+			"item": [
+				{
+					"name": "Login geral",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": "http://localhost:8080/v1/instrutor/logar"
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
